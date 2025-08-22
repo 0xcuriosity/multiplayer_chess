@@ -7,11 +7,28 @@ export class Game {
   private player2: WebSocket;
   private board: Chess;
   private startTime: Date;
+  private movesCount = 0;
   constructor(player1: WebSocket, player2: WebSocket) {
     this.player1 = player1;
     this.player2 = player2;
     this.board = new Chess();
     this.startTime = new Date();
+    this.player1.send(
+      JSON.stringify({
+        type: Message.INIT_GAME,
+        payload: {
+          color: "white",
+        },
+      })
+    );
+    this.player2.send(
+      JSON.stringify({
+        type: Message.INIT_GAME,
+        payload: {
+          color: "black",
+        },
+      })
+    );
   }
 
   getPlayer1() {
@@ -24,8 +41,8 @@ export class Game {
     // validation here - is it this user's move (validate the type of move using zod)
     // is this move valid
     if (
-      (this.board.moves.length % 2 === 0 && socket !== this.player1) ||
-      (this.board.moves.length % 2 === 0 && socket !== this.player1)
+      (this.movesCount % 2 === 0 && socket !== this.player1) ||
+      (this.movesCount % 2 === 0 && socket !== this.player1)
     ) {
       console.error("Not your turn");
       socket.send("Not your turn");
@@ -44,25 +61,26 @@ export class Game {
         message: Message.GAME_OVER,
         player: this.board.turn() === "w" ? "Black" : "White",
       });
-      this.player1.emit(game_over_message);
-      this.player2.emit(game_over_message);
+      this.player1.send(game_over_message);
+      this.player2.send(game_over_message);
       return;
     }
-    if (this.board.moves.length % 2 === 0) {
-      this.player2.emit(
+    if (this.movesCount % 2 === 0) {
+      this.player2.send(
         JSON.stringify({
           type: Message.MOVE,
           payload: move,
         })
       );
     } else {
-      this.player1.emit(
+      this.player1.send(
         JSON.stringify({
           type: Message.MOVE,
           payload: move,
         })
       );
     }
+    this.movesCount++;
 
     // send the updated board to both the players
   }
